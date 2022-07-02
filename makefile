@@ -1,2 +1,2 @@
 default:
-	cc test.c /usr/local/lib/libsoundio.dylib
+	cc sine_example.c /usr/local/lib/libsoundio.dylib

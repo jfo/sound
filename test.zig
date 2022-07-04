@@ -39,33 +39,44 @@ fn write_callback(outstream: [*c]c.SoundIoOutStream, frame_count_min: c_int, fra
 }
 
 pub fn main() !void {
-    var err: c_int = 0;
     const soundio = c.soundio_create();
+    defer c.soundio_destroy(soundio);
 
     if (soundio == null) {
-        std.debug.print("Out of memory", .{});
+        return error.OutOfMemory;
     }
 
+    var err: c_int = 0;
     err = c.soundio_connect(soundio);
 
     if (err > 0) {
-        std.debug.print("Error connecting", .{});
+        return error.ErrorConnecting;
     }
 
-    std.debug.print("Out of memory", .{});
     c.soundio_flush_events(soundio);
+
     const default_out_device_index = c.soundio_default_output_device_index(soundio);
+    if (default_out_device_index < 0) {
+        return error.NoOutputDeviceFound;
+    }
+
     const device = c.soundio_get_output_device(soundio, default_out_device_index);
+    defer c.soundio_device_unref(device);
+    if (device == null) {
+        return error.OutOfMemory;
+    }
+
     const outstream = c.soundio_outstream_create(device);
+    defer c.soundio_outstream_destroy(outstream);
+
     outstream.*.format = c.SoundIoFormatFloat32NE;
     outstream.*.write_callback = write_callback;
-    _ = c.soundio_outstream_open(outstream);
+    err = c.soundio_outstream_open(outstream);
+    if (err > 0) {
+        return error.UnableToOpenDevice;
+    }
 
     while (true) {
         c.soundio_wait_events(soundio);
     }
-
-    c.soundio_outstream_destroy(outstream);
-    c.soundio_device_unref(device);
-    c.soundio_destroy(soundio);
 }

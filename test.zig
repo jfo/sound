@@ -9,6 +9,7 @@ fn write_callback(outstream: [*c]c.SoundIoOutStream, frame_count_min: c_int, fra
     const layout = outstream.*.layout;
     var frames_left = frame_count_max;
     var areas: [*c]c.SoundIoChannelArea = undefined;
+    var rng = &std.rand.Isaac64.init(0);
 
     while (frames_left > 0) {
         var frame_count = frames_left;
@@ -18,22 +19,28 @@ fn write_callback(outstream: [*c]c.SoundIoOutStream, frame_count_min: c_int, fra
             break;
         }
 
-        var frame: u32 = 0;
+        var frame: c_int = 0;
         while (frame < frame_count) {
-            const sample: f32 = 1.0;
+            const sample: i32 = std.rand.Isaac64.random(rng).int(i32);
             _ = sample;
-
             var channel: u32 = 0;
+
             while (channel < layout.channel_count) {
                 // float *ptr = (float*)(areas[channel].ptr + areas[channel].step * frame);
                 // *ptr = sample;
+
+                // std.debug.print("x:{*} y:{} z:{}\n", .{ areas[channel].ptr, areas[channel].step, frame });
+
                 channel += 1;
             }
 
             frame += 1;
         }
 
-        _ = c.soundio_outstream_end_write(outstream);
+        var err: c_int = 0;
+        err = c.soundio_outstream_end_write(outstream);
+        if (err > 0) {}
+
         frames_left -= frame_count;
     }
 }

@@ -1,3 +1,4 @@
+const std = @import("std");
 const c = @cImport({
     @cInclude("/Volumes/InternalNVME/jeff/code/sound/libsoundio/soundio/soundio.h");
 });
@@ -38,8 +39,20 @@ fn write_callback(outstream: [*c]c.SoundIoOutStream, frame_count_min: c_int, fra
 }
 
 pub fn main() !void {
+    var err: c_int = 0;
     const soundio = c.soundio_create();
-    _ = c.soundio_connect(soundio);
+
+    if (soundio == null) {
+        std.debug.print("Out of memory", .{});
+    }
+
+    err = c.soundio_connect(soundio);
+
+    if (err > 0) {
+        std.debug.print("Error connecting", .{});
+    }
+
+    std.debug.print("Out of memory", .{});
     c.soundio_flush_events(soundio);
     const default_out_device_index = c.soundio_default_output_device_index(soundio);
     const device = c.soundio_get_output_device(soundio, default_out_device_index);
@@ -51,4 +64,8 @@ pub fn main() !void {
     while (true) {
         c.soundio_wait_events(soundio);
     }
+
+    c.soundio_outstream_destroy(outstream);
+    c.soundio_device_unref(device);
+    c.soundio_destroy(soundio);
 }

@@ -76,6 +76,11 @@ pub fn main() !void {
         return error.UnableToOpenDevice;
     }
 
+    err = c.soundio_outstream_start(outstream);
+    if (err > 0) {
+        return error.UnableToStartDevice;
+    }
+
     while (true) {
         c.soundio_wait_events(soundio);
     }

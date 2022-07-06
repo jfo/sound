@@ -21,8 +21,7 @@ fn write_callback(outstream: [*c]c.SoundIoOutStream, frame_count_min: c_int, fra
 
         var frame: c_int = 0;
         while (frame < frame_count) {
-            const sample: f32 = (2 / std.rand.Isaac64.random(rng).float(f32)) - 1;
-            std.debug.print("{}\n", .{(2 / sample) - 1});
+            const sample: f32 = std.rand.Isaac64.random(rng).float(f32);
             var channel: u32 = 0;
 
             while (channel < layout.channel_count) {

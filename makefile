@@ -3,3 +3,6 @@ sine:
 
 zigtest:
 	 zig run test.zig -lsoundio
+
+translate:
+	 zig cc -I libsoundio -L libsoundio/build sine_example.c -lsoundio

@@ -21,15 +21,22 @@ fn write_callback(outstream: [*c]c.SoundIoOutStream, frame_count_min: c_int, fra
 
         var frame: c_int = 0;
         while (frame < frame_count) {
-            const sample: i32 = std.rand.Isaac64.random(rng).int(i32);
+            const sample: f32 = std.rand.Isaac64.random(rng).float(f32);
             _ = sample;
             var channel: u32 = 0;
 
             while (channel < layout.channel_count) {
-                // float *ptr = (float*)(areas[channel].ptr + areas[channel].step * frame);
-                // *ptr = sample;
 
-                // std.debug.print("x:{*} y:{} z:{}\n", .{ areas[channel].ptr, areas[channel].step, frame });
+                // translated from c version
+                var ptr: [*c]f32 = @ptrCast([*c]f32, @alignCast(@import("std").meta.alignment(f32), (blk: {
+                    const tmp = channel;
+                    if (tmp >= 0) break :blk areas + @intCast(usize, tmp) else break :blk areas - ~@bitCast(usize, @intCast(isize, tmp) +% -1);
+                }).*.ptr + @bitCast(usize, @intCast(isize, (blk: {
+                    const tmp = channel;
+                    if (tmp >= 0) break :blk areas + @intCast(usize, tmp) else break :blk areas - ~@bitCast(usize, @intCast(isize, tmp) +% -1);
+                }).*.step * frame))));
+                ptr.* = sample;
+                //
 
                 channel += 1;
             }

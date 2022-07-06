@@ -30,11 +30,18 @@ fn write_callback(outstream: [*c]c.SoundIoOutStream, frame_count_min: c_int, fra
                 // translated from c version
                 var ptr: [*c]f32 = @ptrCast([*c]f32, @alignCast(@import("std").meta.alignment(f32), (blk: {
                     const tmp = channel;
-                    if (tmp >= 0) break :blk areas + @intCast(usize, tmp) else break :blk areas - ~@bitCast(usize, @intCast(isize, tmp) +% -1);
+                    if (tmp >= 0) {
+                        break :blk areas + @intCast(usize, tmp);
+                    }
+                    break :blk areas - ~@bitCast(usize, @intCast(isize, tmp) +% -1);
                 }).*.ptr + @bitCast(usize, @intCast(isize, (blk: {
                     const tmp = channel;
-                    if (tmp >= 0) break :blk areas + @intCast(usize, tmp) else break :blk areas - ~@bitCast(usize, @intCast(isize, tmp) +% -1);
+                    if (tmp >= 0) {
+                        break :blk areas + @intCast(usize, tmp);
+                    }
+                    break :blk areas - ~@bitCast(usize, @intCast(isize, tmp) +% -1);
                 }).*.step * frame))));
+
                 ptr.* = sample;
                 //
 

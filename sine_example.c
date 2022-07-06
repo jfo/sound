@@ -32,6 +32,7 @@ static void write_callback(struct SoundIoOutStream *outstream,
         float radians_per_second = pitch * 2.0f * PI;
         for (int frame = 0; frame < frame_count; frame += 1) {
             float sample = sinf((seconds_offset + frame * seconds_per_frame) * radians_per_second);
+            printf("%f\n", sample);
             for (int channel = 0; channel < layout->channel_count; channel += 1) {
                 float *ptr = (float*)(areas[channel].ptr + areas[channel].step * frame);
                 *ptr = sample;

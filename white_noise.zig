@@ -1,6 +1,6 @@
 const std = @import("std");
 const c = @cImport({
-    @cInclude("/Volumes/InternalNVME/jeff/code/sound/libsoundio/soundio/soundio.h");
+    @cInclude("soundio/soundio.h");
 });
 
 fn write_callback(outstream: [*c]c.SoundIoOutStream, frame_count_min: c_int, frame_count_max: c_int) callconv(.C) void {

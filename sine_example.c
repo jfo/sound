@@ -32,7 +32,7 @@ static void write_callback(struct SoundIoOutStream *outstream,
         float radians_per_second = pitch * 2.0f * PI;
         for (int frame = 0; frame < frame_count; frame += 1) {
             float sample = sinf((seconds_offset + frame * seconds_per_frame) * radians_per_second);
-            printf("%f\n", sample);
+            /* printf("%f\n", sample); */
             for (int channel = 0; channel < layout->channel_count; channel += 1) {
                 float *ptr = (float*)(areas[channel].ptr + areas[channel].step * frame);
                 *ptr = sample;
@@ -78,10 +78,14 @@ int main(int argc, char **argv) {
     }
 
     fprintf(stderr, "Output device: %s\n", device->name);
+    fprintf(stderr, "Backend: %s\n", soundio_backend_name(soundio->current_backend));
 
     struct SoundIoOutStream *outstream = soundio_outstream_create(device);
     outstream->format = SoundIoFormatFloat32NE;
     outstream->write_callback = write_callback;
+
+    fprintf(stderr, "format: %u\n", outstream->format);
+    fprintf(stderr, "format: %s\n", soundio_format_string(outstream->format));
 
     if ((err = soundio_outstream_open(outstream))) {
         fprintf(stderr, "unable to open device: %s", soundio_strerror(err));

@@ -38,14 +38,10 @@ fn write_header(seconds: u32, file: File) !void {
 
 fn sine_wave(seconds: u32, file: File, freq: f64) !void {
     var idx: u32 = 0;
-    const b = seconds * SAMPLE_RATE;
-    _ = b;
     while (idx < seconds * SAMPLE_RATE) {
         const sample = ((sin(((@intToFloat(f64, idx) * 2.0 * 3.1415) / @intToFloat(f64, SAMPLE_RATE)) * freq) + 1.0) / 2.0) * 255.0;
         const arr = [_]u8{@floatToInt(u8, sample)};
-
         _ = try file.write(arr[0..]);
-
         idx += 1;
     }
 }

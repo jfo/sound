@@ -9,6 +9,7 @@ const SUBCHUNK1_SIZE: u32 = 16;
 const AUDIO_FORMAT: u16 = 1;
 const BIT_DEPTH: u32 = 8;
 const BYTE_SIZE: u32 = 8;
+const PI: f64 = 3.14159265358979323846264338327950288;
 
 fn write_u16(n: u16, file: File) !void {
     const arr = [_]u8{ @truncate(u8, n), @truncate(u8, n >> 8) };
@@ -39,7 +40,7 @@ fn write_header(seconds: u32, file: File) !void {
 fn sine_wave(seconds: u32, file: File, freq: f64) !void {
     var idx: u32 = 0;
     while (idx < seconds * SAMPLE_RATE) {
-        const sample = ((sin(((@intToFloat(f64, idx) * 2.0 * 3.1415) / @intToFloat(f64, SAMPLE_RATE)) * freq) + 1.0) / 2.0) * 255.0;
+        const sample = ((sin(((@intToFloat(f64, idx) * 2.0 * PI) / @intToFloat(f64, SAMPLE_RATE)) * freq) + 1.0) / 2.0) * 255.0;
         const arr = [_]u8{@floatToInt(u8, sample)};
         _ = try file.write(arr[0..]);
         idx += 1;

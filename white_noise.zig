@@ -4,6 +4,11 @@ const c = @cImport({
 });
 
 pub var seconds_offset: f32 = 0.0;
+
+fn sine(frame: c_int, seconds_per_frame: f32, radians_per_second: f32) f32 {
+    return std.math.sin((seconds_offset + (@intToFloat(f32, frame) * seconds_per_frame)) * radians_per_second);
+}
+
 fn write_callback(outstream: [*c]c.SoundIoOutStream, frame_count_min: c_int, frame_count_max: c_int) callconv(.C) void {
     var layout: [*c]const c.SoundIoChannelLayout = &outstream.*.layout;
     _ = frame_count_min;
@@ -25,7 +30,6 @@ fn write_callback(outstream: [*c]c.SoundIoOutStream, frame_count_min: c_int, fra
         {
             var frame: c_int = 0;
             while (frame < frame_count) : (frame += @as(c_int, 1)) {
-                var sample: f32 = std.math.sin((seconds_offset + (@intToFloat(f32, frame) * seconds_per_frame)) * radians_per_second);
                 {
                     var channel: c_int = 0;
                     while (channel < layout.*.channel_count) : (channel += @as(c_int, 1)) {
@@ -36,7 +40,7 @@ fn write_callback(outstream: [*c]c.SoundIoOutStream, frame_count_min: c_int, fra
                             const tmp = channel;
                             if (tmp >= 0) break :blk areas + @intCast(usize, tmp) else break :blk areas - ~@bitCast(usize, @intCast(isize, tmp) +% -1);
                         }).*.step * frame))));
-                        ptr.* = sample;
+                        ptr.* = sine(frame, seconds_per_frame, radians_per_second);
                     }
                 }
             }

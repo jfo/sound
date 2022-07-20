@@ -3,7 +3,6 @@ const c = @cImport({
     @cInclude("soundio/soundio.h");
 });
 
-const PI: f32 = 3.14159265358979323846264338327950288;
 pub var seconds_offset: f32 = 0.0;
 fn write_callback(outstream: [*c]c.SoundIoOutStream, frame_count_min: c_int, frame_count_max: c_int) callconv(.C) void {
     var layout: [*c]const c.SoundIoChannelLayout = &outstream.*.layout;
@@ -22,7 +21,7 @@ fn write_callback(outstream: [*c]c.SoundIoOutStream, frame_count_min: c_int, fra
         }) != 0) {}
         if (!(frame_count != 0)) break;
         var pitch: f32 = 440.0;
-        var radians_per_second: f32 = (pitch * 2.0) * PI;
+        var radians_per_second: f32 = (pitch * 2.0) * std.math.pi;
         {
             var frame: c_int = 0;
             while (frame < frame_count) : (frame += @as(c_int, 1)) {

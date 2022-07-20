@@ -3,58 +3,51 @@ const c = @cImport({
     @cInclude("soundio/soundio.h");
 });
 
+const PI: f32 = 3.14159265358979323846264338327950288;
+pub var seconds_offset: f32 = 0.0;
 fn write_callback(outstream: [*c]c.SoundIoOutStream, frame_count_min: c_int, frame_count_max: c_int) callconv(.C) void {
+    var layout: [*c]const c.SoundIoChannelLayout = &outstream.*.layout;
     _ = frame_count_min;
-
-    const layout = outstream.*.layout;
-    var frames_left = frame_count_max;
+    var float_sample_rate: f32 = @intToFloat(f32, outstream.*.sample_rate);
+    var seconds_per_frame: f32 = 1.0 / float_sample_rate;
     var areas: [*c]c.SoundIoChannelArea = undefined;
-    var rng = &std.rand.Isaac64.init(0);
-
-    while (frames_left > 0) {
-        var frame_count = frames_left;
-        _ = c.soundio_outstream_begin_write(outstream, &areas, &frame_count);
-
-        if (frame_count <= 0) {
-            break;
-        }
-
-        var frame: c_int = 0;
-        while (frame < frame_count) {
-            var sample: f32 = std.rand.Isaac64.random(rng).float(f32);
-            sample = std.math.clamp(sample, @as(f32, -0.2), @as(f32, 0.2));
-            var channel: u32 = 0;
-
-            while (channel < layout.channel_count) {
-
-                // translated from c version
-                var ptr: [*c]f32 = @ptrCast([*c]f32, @alignCast(@import("std").meta.alignment(f32), (blk: {
-                    const tmp = channel;
-                    if (tmp >= 0) {
-                        break :blk areas + @intCast(usize, tmp);
+    var frames_left: c_int = frame_count_max;
+    var err: c_int = undefined;
+    while (frames_left > @as(c_int, 0)) {
+        var frame_count: c_int = frames_left;
+        if ((blk: {
+            const tmp = c.soundio_outstream_begin_write(outstream, &areas, &frame_count);
+            err = tmp;
+            break :blk tmp;
+        }) != 0) {}
+        if (!(frame_count != 0)) break;
+        var pitch: f32 = 440.0;
+        var radians_per_second: f32 = (pitch * 2.0) * PI;
+        {
+            var frame: c_int = 0;
+            while (frame < frame_count) : (frame += @as(c_int, 1)) {
+                var sample: f32 = std.math.sin((seconds_offset + (@intToFloat(f32, frame) * seconds_per_frame)) * radians_per_second);
+                {
+                    var channel: c_int = 0;
+                    while (channel < layout.*.channel_count) : (channel += @as(c_int, 1)) {
+                        var ptr: [*c]f32 = @ptrCast([*c]f32, @alignCast(@import("std").meta.alignment(f32), (blk: {
+                            const tmp = channel;
+                            if (tmp >= 0) break :blk areas + @intCast(usize, tmp) else break :blk areas - ~@bitCast(usize, @intCast(isize, tmp) +% -1);
+                        }).*.ptr + @bitCast(usize, @intCast(isize, (blk: {
+                            const tmp = channel;
+                            if (tmp >= 0) break :blk areas + @intCast(usize, tmp) else break :blk areas - ~@bitCast(usize, @intCast(isize, tmp) +% -1);
+                        }).*.step * frame))));
+                        ptr.* = sample;
                     }
-                    break :blk areas - ~@bitCast(usize, @intCast(isize, tmp) +% -1);
-                }).*.ptr + @bitCast(usize, @intCast(isize, (blk: {
-                    const tmp = channel;
-                    if (tmp >= 0) {
-                        break :blk areas + @intCast(usize, tmp);
-                    }
-                    break :blk areas - ~@bitCast(usize, @intCast(isize, tmp) +% -1);
-                }).*.step * frame))));
-
-                ptr.* = sample;
-                //
-
-                channel += 1;
+                }
             }
-
-            frame += 1;
         }
-
-        var err: c_int = 0;
-        err = c.soundio_outstream_end_write(outstream);
-        if (err > 0) {}
-
+        seconds_offset = @rem(seconds_offset + (seconds_per_frame * @intToFloat(f32, frame_count)), 1.0);
+        if ((blk: {
+            const tmp = c.soundio_outstream_end_write(outstream);
+            err = tmp;
+            break :blk tmp;
+        }) != 0) {}
         frames_left -= frame_count;
     }
 }

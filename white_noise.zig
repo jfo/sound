@@ -5,7 +5,8 @@ const c = @cImport({
 
 pub var seconds_offset: f32 = 0.0;
 
-fn sine(frame: c_int, seconds_per_frame: f32, radians_per_second: f32) f32 {
+fn sine(pitch: f32, frame: c_int, seconds_per_frame: f32) f32 {
+    var radians_per_second: f32 = (pitch * 2.0) * std.math.pi;
     return std.math.sin((seconds_offset + (@intToFloat(f32, frame) * seconds_per_frame)) * radians_per_second);
 }
 
@@ -25,8 +26,6 @@ fn write_callback(outstream: [*c]c.SoundIoOutStream, frame_count_min: c_int, fra
             break :blk tmp;
         }) != 0) {}
         if (!(frame_count != 0)) break;
-        var pitch: f32 = 440.0;
-        var radians_per_second: f32 = (pitch * 2.0) * std.math.pi;
         {
             var frame: c_int = 0;
             while (frame < frame_count) : (frame += @as(c_int, 1)) {
@@ -40,7 +39,7 @@ fn write_callback(outstream: [*c]c.SoundIoOutStream, frame_count_min: c_int, fra
                             const tmp = channel;
                             if (tmp >= 0) break :blk areas + @intCast(usize, tmp) else break :blk areas - ~@bitCast(usize, @intCast(isize, tmp) +% -1);
                         }).*.step * frame))));
-                        ptr.* = sine(frame, seconds_per_frame, radians_per_second);
+                        ptr.* = sine(440.0, frame, seconds_per_frame);
                     }
                 }
             }

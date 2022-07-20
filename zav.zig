@@ -24,17 +24,17 @@ fn write_u32(n: u32, file: File) !void {
 fn write_header(seconds: u32, file: File) !void {
     const numsamples: u32 = SAMPLE_RATE * seconds;
     _ = try file.write("RIFF");
-    _ = try write_u32(HEADER_SIZE + numsamples, file);
+    try write_u32(HEADER_SIZE + numsamples, file);
     _ = try file.write("WAVEfmt ");
-    _ = try write_u32(SUBCHUNK1_SIZE, file);
-    _ = try write_u16(AUDIO_FORMAT, file);
-    _ = try write_u16(@truncate(u16, CHANNELS), file);
-    _ = try write_u32(SAMPLE_RATE, file);
-    _ = try write_u32(SAMPLE_RATE * CHANNELS * (BIT_DEPTH / BYTE_SIZE), file);
-    _ = try write_u16(@truncate(u16, (CHANNELS * (BIT_DEPTH / BYTE_SIZE))), file);
-    _ = try write_u16(@truncate(u16, BIT_DEPTH), file);
+    try write_u32(SUBCHUNK1_SIZE, file);
+    try write_u16(AUDIO_FORMAT, file);
+    try write_u16(@truncate(u16, CHANNELS), file);
+    try write_u32(SAMPLE_RATE, file);
+    try write_u32(SAMPLE_RATE * CHANNELS * (BIT_DEPTH / BYTE_SIZE), file);
+    try write_u16(@truncate(u16, (CHANNELS * (BIT_DEPTH / BYTE_SIZE))), file);
+    try write_u16(@truncate(u16, BIT_DEPTH), file);
     _ = try file.write("data");
-    _ = try write_u32(numsamples * CHANNELS * (BIT_DEPTH / BYTE_SIZE), file);
+    try write_u32(numsamples * CHANNELS * (BIT_DEPTH / BYTE_SIZE), file);
 }
 
 fn sine_wave(seconds: u32, file: File, freq: f64) !void {

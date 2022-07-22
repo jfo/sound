@@ -1,3 +1,6 @@
 [submodule "libsoundio"]
 	path = libsoundio
 	url = ../libsoundio
+[submodule "libmonome"]
+	path = libmonome
+	url = git@github.com:jfo/libmonome.git

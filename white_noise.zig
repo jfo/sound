@@ -4,6 +4,7 @@ const c = @cImport({
 });
 
 pub var seconds_offset: f32 = 0.0;
+var scaling: f32 = 0.00125;
 
 fn sine(pitch: f32, frame: c_int, seconds_per_frame: f32) f32 {
     var radians_per_second: f32 = (pitch * 2.0) * std.math.pi;
@@ -59,7 +60,7 @@ fn write_callback(outstream: [*c]c.SoundIoOutStream, frame_count_min: c_int, fra
                         // var sample = sine();
                         // var sample = sine(base, frame, seconds_per_frame);
                         const sample = white();
-                        ptr.* = sample;
+                        ptr.* = sample * scaling;
                     }
                 }
             }

@@ -10,6 +10,12 @@ fn sine(pitch: f32, frame: c_int, seconds_per_frame: f32) f32 {
     return std.math.sin((seconds_offset + (@intToFloat(f32, frame) * seconds_per_frame)) * radians_per_second);
 }
 
+var prng = std.rand.DefaultPrng.init(0);
+fn white() f32 {
+    const random = prng.random();
+    return (random.float(f32) * 2.0) - 1.0;
+}
+
 fn saw(pitch: f32, frame: c_int, seconds_per_frame: f32) f32 {
     return sine(pitch, frame, seconds_per_frame) +
         sine(2.0 * pitch, frame, seconds_per_frame) +
@@ -49,8 +55,10 @@ fn write_callback(outstream: [*c]c.SoundIoOutStream, frame_count_min: c_int, fra
                             const tmp = channel;
                             if (tmp >= 0) break :blk areas + @intCast(usize, tmp) else break :blk areas - ~@bitCast(usize, @intCast(isize, tmp) +% -1);
                         }).*.step * frame))));
-                        const base = 440.0;
-                        var sample = saw(base, frame, seconds_per_frame) + saw(2.0 * base, frame, seconds_per_frame);
+                        // const base = 440.0;
+                        // var sample = sine();
+                        // var sample = sine(base, frame, seconds_per_frame);
+                        const sample = white();
                         ptr.* = sample;
                     }
                 }

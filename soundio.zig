@@ -3,29 +3,8 @@ const c = @cImport({
     @cInclude("soundio/soundio.h");
 });
 
-pub var seconds_offset: f32 = 0.0;
-var scaling: f32 = 0.00125;
-
-fn sine(pitch: f32, frame: c_int, seconds_per_frame: f32) f32 {
-    var radians_per_second: f32 = (pitch * 2.0) * std.math.pi;
-    return std.math.sin((seconds_offset + (@intToFloat(f32, frame) * seconds_per_frame)) * radians_per_second);
-}
-
-var prng = std.rand.DefaultPrng.init(0);
-fn white() f32 {
-    const random = prng.random();
-    return (random.float(f32) * 2.0) - 1.0;
-}
-
-fn saw(pitch: f32, frame: c_int, seconds_per_frame: f32) f32 {
-    return sine(pitch, frame, seconds_per_frame) +
-        sine(2.0 * pitch, frame, seconds_per_frame) +
-        sine(3.0 * pitch, frame, seconds_per_frame) +
-        sine(4.0 * pitch, frame, seconds_per_frame) +
-        sine(5.0 * pitch, frame, seconds_per_frame) +
-        sine(6.0 * pitch, frame, seconds_per_frame) +
-        sine(7.0 * pitch, frame, seconds_per_frame);
-}
+var seconds_offset: f32 = 0.0;
+var getSample: fn (f32) f32 = undefined;
 
 fn write_callback(outstream: [*c]c.SoundIoOutStream, frame_count_min: c_int, frame_count_max: c_int) callconv(.C) void {
     var layout: [*c]const c.SoundIoChannelLayout = &outstream.*.layout;
@@ -56,11 +35,8 @@ fn write_callback(outstream: [*c]c.SoundIoOutStream, frame_count_min: c_int, fra
                             const tmp = channel;
                             if (tmp >= 0) break :blk areas + @intCast(usize, tmp) else break :blk areas - ~@bitCast(usize, @intCast(isize, tmp) +% -1);
                         }).*.step * frame))));
-                        // const base = 440.0;
-                        // var sample = sine();
-                        // var sample = sine(base, frame, seconds_per_frame);
-                        const sample = white();
-                        ptr.* = sample * scaling;
+                        const sample = getSample(seconds_offset);
+                        ptr.* = sample;
                     }
                 }
             }
@@ -75,7 +51,8 @@ fn write_callback(outstream: [*c]c.SoundIoOutStream, frame_count_min: c_int, fra
     }
 }
 
-pub fn main() !void {
+pub fn initialize(function: fn (f32) f32) !void {
+    getSample = function;
     const soundio = c.soundio_create();
     defer c.soundio_destroy(soundio);
 

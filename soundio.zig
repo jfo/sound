@@ -35,7 +35,9 @@ fn write_callback(outstream: [*c]c.SoundIoOutStream, frame_count_min: c_int, fra
                             const tmp = channel;
                             if (tmp >= 0) break :blk areas + @intCast(usize, tmp) else break :blk areas - ~@bitCast(usize, @intCast(isize, tmp) +% -1);
                         }).*.step * frame))));
-                        const sample = getSample(seconds_offset);
+                        const offset = seconds_offset + (@intToFloat(f32, frame) * seconds_per_frame);
+                        const sample = getSample(offset);
+
                         ptr.* = sample;
                     }
                 }

@@ -6,6 +6,13 @@ const c = @cImport({
 var seconds_offset: f32 = 0.0;
 var getSample: fn (f32) f32 = undefined;
 
+fn read_callback(instream: [*c]c.SoundIoInStream, frame_count_min: c_int, frame_count_max: c_int) callconv(.C) void {
+    _ = instream;
+    _ = frame_count_min;
+    _ = frame_count_max;
+    std.debug.print("hello from read_callback", .{});
+}
+
 fn write_callback(outstream: [*c]c.SoundIoOutStream, frame_count_min: c_int, frame_count_max: c_int) callconv(.C) void {
     var layout: [*c]const c.SoundIoChannelLayout = &outstream.*.layout;
     _ = frame_count_min;
@@ -76,13 +83,28 @@ pub fn initialize(function: fn (f32) f32) !void {
         return error.NoOutputDeviceFound;
     }
 
-    const device = c.soundio_get_output_device(soundio, default_out_device_index);
-    defer c.soundio_device_unref(device);
-    if (device == null) {
+    const out_device = c.soundio_get_output_device(soundio, default_out_device_index);
+    defer c.soundio_device_unref(out_device);
+    if (out_device == null) {
         return error.OutOfMemory;
     }
 
-    const outstream = c.soundio_outstream_create(device);
+    const default_in_device_index = c.soundio_default_input_device_index(soundio);
+    if (default_in_device_index < 0) {
+        return error.NoInputDeviceFound;
+    }
+
+    const in_device = c.soundio_get_input_device(soundio, default_out_device_index);
+    defer c.soundio_device_unref(in_device);
+    if (in_device == null) {
+        return error.OutOfMemory;
+    }
+
+    std.debug.print("Input device: {s}\n", .{in_device.*.name});
+    std.debug.print("Output device: {s}\n", .{out_device.*.name});
+
+    // ---------------
+    const outstream = c.soundio_outstream_create(out_device);
     defer c.soundio_outstream_destroy(outstream);
 
     outstream.*.format = c.SoundIoFormatFloat32NE;
@@ -96,6 +118,26 @@ pub fn initialize(function: fn (f32) f32) !void {
     if (err > 0) {
         return error.UnableToStartDevice;
     }
+
+    // ---------------
+
+    const instream = c.soundio_instream_create(in_device);
+    defer c.soundio_instream_destroy(instream);
+
+    instream.*.format = c.SoundIoFormatFloat32NE;
+    instream.*.sample_rate = 48000;
+    instream.*.software_latency = 0.2;
+    instream.*.read_callback = read_callback;
+
+    std.debug.print("Thing: {}\n", .{instream.*.device.*.aim});
+
+    err = c.soundio_instream_open(instream);
+    if (err > 0) {
+        std.debug.print("errcode: {s}\n", .{c.soundio_strerror(err)});
+        return error.UnableToOpenDevice;
+    }
+
+    // ---------------
 
     while (true) {
         c.soundio_wait_events(soundio);

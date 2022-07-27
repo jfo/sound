@@ -147,8 +147,6 @@ pub fn initialize(function: fn (f32) f32) !void {
 
     const buf = c.soundio_ring_buffer_write_ptr(ring_buffer);
     const fill_count: usize = @floatToInt(usize, microphone_latency * @intToFloat(f32, outstream.*.sample_rate * outstream.*.bytes_per_frame));
-    _ = buf;
-    _ = fill_count;
     std.mem.set(u8, buf[0..fill_count], 0);
     c.soundio_ring_buffer_advance_write_ptr(ring_buffer, @intCast(c_int, fill_count));
 

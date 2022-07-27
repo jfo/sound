@@ -59,25 +59,7 @@ fn write_callback(outstream: [*c]c.SoundIoOutStream, frame_count_min: c_int, fra
     }
 }
 
-pub fn initialize(function: fn (f32) f32) !void {
-    getSample = function;
-    // const microphone_latency: f32 = 0.002; // seconds
-    const soundio = c.soundio_create();
-    defer c.soundio_destroy(soundio);
-
-    if (soundio == null) {
-        return error.OutOfMemory;
-    }
-
-    var err: c_int = 0;
-    err = c.soundio_connect(soundio);
-
-    if (err > 0) {
-        return error.ErrorConnecting;
-    }
-
-    c.soundio_flush_events(soundio);
-
+fn initializeOutstream(soundio: [*c]c.SoundIo) ![*c]c.SoundIoOutStream {
     const default_out_device_index = c.soundio_default_output_device_index(soundio);
     if (default_out_device_index < 0) {
         return error.NoOutputDeviceFound;
@@ -89,6 +71,22 @@ pub fn initialize(function: fn (f32) f32) !void {
         return error.OutOfMemory;
     }
 
+    std.debug.print("Output device: {s}\n", .{out_device.*.name});
+
+    const outstream = c.soundio_outstream_create(out_device);
+
+    outstream.*.format = c.SoundIoFormatFloat32NE;
+    outstream.*.write_callback = write_callback;
+
+    const err = c.soundio_outstream_open(outstream);
+    if (err > 0) {
+        return error.UnableToOpenOutputDevice;
+    }
+
+    return outstream;
+}
+
+fn initializeInstream(soundio: [*c]c.SoundIo) ![*c]c.SoundIoInStream {
     const default_in_device_index = c.soundio_default_input_device_index(soundio);
     if (default_in_device_index < 0) {
         return error.NoInputDeviceFound;
@@ -101,40 +99,52 @@ pub fn initialize(function: fn (f32) f32) !void {
     }
 
     std.debug.print("Input device: {s}\n", .{in_device.*.name});
-    std.debug.print("Output device: {s}\n", .{out_device.*.name});
 
-    // ---------------
     const instream = c.soundio_instream_create(in_device);
-    defer c.soundio_instream_destroy(instream);
 
     instream.*.format = c.SoundIoFormatFloat32NE;
     instream.*.sample_rate = 48000;
     instream.*.software_latency = 2.0;
     instream.*.read_callback = read_callback;
 
-    err = c.soundio_instream_open(instream);
+    var err = c.soundio_instream_open(instream);
     if (err > 0) {
         std.debug.print("errcode: {s}\n", .{c.soundio_strerror(err)});
         return error.UnableToOpenInputDevice;
     }
+    return instream;
+}
 
-    // ---------------
-    const outstream = c.soundio_outstream_create(out_device);
-    defer c.soundio_outstream_destroy(outstream);
+pub fn initialize(function: fn (f32) f32) !void {
+    var err: c_int = 0;
+    getSample = function;
+    // const microphone_latency: f32 = 0.002; // seconds
 
-    outstream.*.format = c.SoundIoFormatFloat32NE;
-    outstream.*.write_callback = write_callback;
-    err = c.soundio_outstream_open(outstream);
+    const soundio = c.soundio_create();
+    if (soundio == null) {
+        return error.OutOfMemory;
+    }
+    defer c.soundio_destroy(soundio);
+
+    err = c.soundio_connect(soundio);
     if (err > 0) {
-        return error.UnableToOpenOutputDevice;
+        return error.ErrorConnecting;
     }
 
-    err = c.soundio_instream_start(instream);
+    c.soundio_flush_events(soundio);
+
+    const outstream = try initializeOutstream(soundio);
+    defer c.soundio_outstream_destroy(outstream);
+
+    const instream = try initializeInstream(soundio);
+    defer c.soundio_instream_destroy(instream);
+
+    err = c.soundio_outstream_start(outstream);
     if (err > 0) {
         return error.UnableToStartDevice;
     }
 
-    err = c.soundio_outstream_start(outstream);
+    err = c.soundio_instream_start(instream);
     if (err > 0) {
         return error.UnableToStartDevice;
     }

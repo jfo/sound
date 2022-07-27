@@ -6,11 +6,68 @@ const c = @cImport({
 var seconds_offset: f32 = 0.0;
 var getSample: fn (f32) f32 = undefined;
 
+var ring_buffer: ?*c.SoundIoRingBuffer = null;
+
 fn read_callback(instream: [*c]c.SoundIoInStream, frame_count_min: c_int, frame_count_max: c_int) callconv(.C) void {
-    _ = instream;
-    _ = frame_count_min;
+    var areas: [*c]c.SoundIoChannelArea = undefined;
+    var err: c_int = undefined;
+    var write_ptr = c.soundio_ring_buffer_write_ptr(ring_buffer);
+    _ = write_ptr;
+    _ = err;
+    _ = areas;
     _ = frame_count_max;
-    std.debug.print("hello from read_callback", .{});
+    _ = frame_count_min;
+    _ = instream;
+    const free_bytes: c_int = c.soundio_ring_buffer_free_count(ring_buffer);
+    const free_count: c_int = @divExact(free_bytes, instream.*.bytes_per_frame);
+
+    if (frame_count_min > free_count) {
+        // panic("ring buffer overflow");
+    }
+
+    const write_frames: c_int = if (free_count < frame_count_max) free_count else frame_count_max;
+    var frames_left = write_frames;
+    _ = frames_left;
+
+    while (true) {
+        var frame_count: c_int = frames_left;
+
+        err = c.soundio_instream_begin_read(instream, &areas, &frame_count);
+        if (err > 0) {
+            break;
+            //     if ((err = c.soundio_instream_begin_read(instream, &areas, &frame_count)))
+            //         panic("begin read error: %s", soundio_strerror(err));
+        }
+
+        if (frame_count == 0)
+            break;
+
+        if (areas == undefined) {
+            //         // Due to an overflow there is a hole. Fill the ring buffer with
+            //         // silence for the size of the hole.
+            // std.mem.set(c_int, write_ptr[0..write_ptr], 0);
+            // memset(write_ptr, 0, frame_count * instream->bytes_per_frame);
+            // fprintf(stderr, "Dropped %d frames due to internal overflow\n", frame_count);
+        } else {
+            // for (int frame = 0; frame < frame_count; frame += 1) {
+            //             for (int ch = 0; ch < instream->layout.channel_count; ch += 1) {
+            //                 memcpy(write_ptr, areas[ch].ptr, instream->bytes_per_sample);
+            //                 areas[ch].ptr += areas[ch].step;
+            //                 write_ptr += instream->bytes_per_sample;
+            //             }
+            // }
+        }
+
+        //     if ((err = soundio_instream_end_read(instream)))
+        //         panic("end read error: %s", soundio_strerror(err));
+
+        frames_left -= frame_count;
+        if (frames_left <= 0)
+            break;
+    }
+
+    // int advance_bytes = write_frames * instream->bytes_per_frame;
+    // soundio_ring_buffer_advance_write_ptr(ring_buffer, advance_bytes);
 }
 
 fn write_callback(outstream: [*c]c.SoundIoOutStream, frame_count_min: c_int, frame_count_max: c_int) callconv(.C) void {
@@ -62,6 +119,7 @@ fn write_callback(outstream: [*c]c.SoundIoOutStream, frame_count_min: c_int, fra
 
 pub fn initialize(function: fn (f32) f32) !void {
     getSample = function;
+    const microphone_latency: f32 = 0.002; // seconds
     const soundio = c.soundio_create();
     defer c.soundio_destroy(soundio);
 
@@ -104,6 +162,21 @@ pub fn initialize(function: fn (f32) f32) !void {
     std.debug.print("Output device: {s}\n", .{out_device.*.name});
 
     // ---------------
+    const instream = c.soundio_instream_create(in_device);
+    defer c.soundio_instream_destroy(instream);
+
+    instream.*.format = c.SoundIoFormatFloat32NE;
+    instream.*.sample_rate = 48000;
+    instream.*.software_latency = 2.0;
+    instream.*.read_callback = read_callback;
+
+    err = c.soundio_instream_open(instream);
+    if (err > 0) {
+        std.debug.print("errcode: {s}\n", .{c.soundio_strerror(err)});
+        return error.UnableToOpenInputDevice;
+    }
+
+    // ---------------
     const outstream = c.soundio_outstream_create(out_device);
     defer c.soundio_outstream_destroy(outstream);
 
@@ -111,31 +184,24 @@ pub fn initialize(function: fn (f32) f32) !void {
     outstream.*.write_callback = write_callback;
     err = c.soundio_outstream_open(outstream);
     if (err > 0) {
-        return error.UnableToOpenDevice;
+        return error.UnableToOpenOutputDevice;
     }
 
-    err = c.soundio_outstream_start(outstream);
+    const capacity: f32 = microphone_latency * 2.0 * @intToFloat(f32, instream.*.sample_rate) * @intToFloat(f32, instream.*.bytes_per_frame);
+    ring_buffer = c.soundio_ring_buffer_create(soundio, @floatToInt(c_int, capacity));
+    if (ring_buffer == null) {
+        return error.OutOfMemory;
+    }
+
+    err = c.soundio_instream_start(instream);
     if (err > 0) {
         return error.UnableToStartDevice;
     }
 
-    // ---------------
-
-    const instream = c.soundio_instream_create(in_device);
-    defer c.soundio_instream_destroy(instream);
-
-    instream.*.format = c.SoundIoFormatFloat32NE;
-    instream.*.sample_rate = 48000;
-    instream.*.software_latency = 0.2;
-    instream.*.read_callback = read_callback;
-
-    std.debug.print("Thing: {}\n", .{instream.*.device.*.aim});
-
-    err = c.soundio_instream_open(instream);
-    if (err > 0) {
-        std.debug.print("errcode: {s}\n", .{c.soundio_strerror(err)});
-        return error.UnableToOpenDevice;
-    }
+    // err = c.soundio_outstream_start(outstream);
+    // if (err > 0) {
+    //     return error.UnableToStartDevice;
+    // }
 
     // ---------------
 

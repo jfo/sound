@@ -26,9 +26,10 @@ fn white() f32 {
 
 fn getSample(offset: f32) f32 {
     const w = white() * scaling;
-    const base = sine(220.0, offset) * scaling;
-    const s = saw(440.0, offset) * scaling * 5;
-    return w + base + s;
+    _ = offset;
+    // const base = sine(220.0, offset) * scaling;
+    // const s = saw(440.0, offset) * scaling * 5;
+    return w;
 }
 
 pub fn main() !void {

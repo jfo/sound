@@ -11,7 +11,7 @@ translate:
 	 zig translate-c -I libsoundio libsoundio/example/sio_microphone.c -lsoundio
 
 mic:
-	 zig  run mic_translated.zig  -lsoundio
+	 zig run mic_translated.zig  -lsoundio
 
 clean:
 	 rm -r sine.wav zig-cache zig-out

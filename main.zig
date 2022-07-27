@@ -1,7 +1,7 @@
 const std = @import("std");
 const soundio = @import("./soundio.zig");
 
-var scaling: f32 = 0.008;
+var scaling: f32 = 0.0008;
 
 fn sine(pitch: f32, offset: f32) f32 {
     var radians_per_second: f32 = (pitch * 2.0) * std.math.pi;
@@ -27,9 +27,9 @@ fn white() f32 {
 fn getSample(offset: f32) f32 {
     const w = white() * scaling;
     _ = offset;
-    // const base = sine(220.0, offset) * scaling;
-    // const s = saw(440.0, offset) * scaling * 5;
-    return w;
+    const base = sine(220.0, offset) * scaling;
+    const s = saw(440.0, offset) * scaling * 5;
+    return w + base + s;
 }
 
 pub fn main() !void {

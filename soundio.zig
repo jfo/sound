@@ -118,7 +118,7 @@ fn initializeInstream(soundio: [*c]c.SoundIo) ![*c]c.SoundIoInStream {
 pub fn initialize(function: fn (f32) f32) !void {
     var err: c_int = 0;
     getSample = function;
-    // const microphone_latency: f32 = 0.002; // seconds
+    const microphone_latency: f32 = 0.002; // seconds
 
     const soundio = c.soundio_create();
     if (soundio == null) {
@@ -138,6 +138,19 @@ pub fn initialize(function: fn (f32) f32) !void {
 
     const instream = try initializeInstream(soundio);
     defer c.soundio_instream_destroy(instream);
+
+    const capacity = microphone_latency * @intToFloat(f32, 2 * instream.*.sample_rate * instream.*.bytes_per_frame);
+    const ring_buffer = c.soundio_ring_buffer_create(soundio, @floatToInt(c_int, capacity));
+    if (ring_buffer == null) {
+        return error.OutOfMemory;
+    }
+
+    const buf = c.soundio_ring_buffer_write_ptr(ring_buffer);
+    const fill_count: usize = @floatToInt(usize, microphone_latency * @intToFloat(f32, outstream.*.sample_rate * outstream.*.bytes_per_frame));
+    _ = buf;
+    _ = fill_count;
+    std.mem.set(u8, buf[0..fill_count], 0);
+    c.soundio_ring_buffer_advance_write_ptr(ring_buffer, @intCast(c_int, fill_count));
 
     err = c.soundio_outstream_start(outstream);
     if (err > 0) {

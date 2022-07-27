@@ -152,7 +152,7 @@ pub fn initialize(function: fn (f32) f32) !void {
         return error.NoInputDeviceFound;
     }
 
-    const in_device = c.soundio_get_input_device(soundio, default_out_device_index);
+    const in_device = c.soundio_get_input_device(soundio, default_in_device_index);
     defer c.soundio_device_unref(in_device);
     if (in_device == null) {
         return error.OutOfMemory;
